@@ -11,7 +11,10 @@ Flux `HelmRelease` PRs are rebuilt and force-pushed on every run, although nothi
 ## Steps
 
 1. Run Renovate once with `LOG_LEVEL=debug`. It creates a PR updating `podinfo`.
-2. Run Renovate again without any change to `main` or the PR branch.
+2. Optional, to see the force-push: push an unrelated commit to `main` (e.g. edit this README).
+3. Run Renovate again with `LOG_LEVEL=debug` and without a matching repository cache (`RENOVATE_REPOSITORY_CACHE=disabled`, or delete the cache).
+
+With a repository cache whose branch fingerprint matches, Renovate skips `getUpdatedPackageFiles()` for the branch and the bug doesn't show.
 
 ## Expected
 
@@ -19,7 +22,18 @@ The second run reuses the existing branch (`Using reuseExistingBranch: true`, `B
 
 ## Actual
 
-The second run logs `Rebasing branch after deps list has changed` for `podinfo`, rebuilds the branch and force-pushes it.
+The second run rejects the existing branch and rebuilds it from `main`:
+
+```
+DEBUG: Using reuseExistingBranch: true
+DEBUG: manager.getUpdatedPackageFiles() reuseExistingBranch=true
+DEBUG: Rebasing branch after deps list has changed (packageFile=flux/apps/podinfo.yaml)
+       "depName": "podinfo"
+DEBUG: manager.getUpdatedPackageFiles() reuseExistingBranch=false
+```
+
+When `main` didn't move, the rebuilt content is identical and Renovate skips the commit (`No file changes detected`).
+When `main` moved (step 2), the rebuilt branch is force-pushed, although there is no conflict and `rebaseWhen` is `conflicted`.
 
 ## Cause
 
